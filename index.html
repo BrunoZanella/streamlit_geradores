@@ -13,6 +13,7 @@
             --success-color: #28a745;
             --warning-color: #ffc107;
             --danger-color: #dc3545;
+            --high-color: #fd7e14;
         }
         
         body {
@@ -117,8 +118,42 @@
             display: inline-block;
         }
         
-        .emoji-alert {
-            font-size: 1.2rem;
+        .alarm-count {
+            font-weight: bold;
+            font-size: 0.5rem;
+            padding: 0.0rem 0.0rem;
+            border-radius: 30%;
+            min-width: 1.5rem;
+            height: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+        
+        .alarm-count.severity-low {
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+        
+        .alarm-count.severity-medium {
+            color: var(--warning-color);
+            border: 1px solid var(--warning-color);
+        }
+        
+        .alarm-count.severity-high {
+            color: var(--high-color);
+            border: 1px solid var(--high-color);
+        }
+        
+        .alarm-count.severity-critical {
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+        }
+        
+        .alarm-count.no-alarms {
+            color: #aaa;
+            border: 1px solid #aaa;
         }
         
         .modal {
@@ -174,7 +209,7 @@
         }
         
         .severity-high {
-            color: #fd7e14;
+            color: var(--high-color);
         }
         
         .severity-critical {
@@ -309,7 +344,7 @@
         }
 
         .alarm-card.severity-high {
-            border-left-color: #fd7e14;
+            border-left-color: var(--high-color);
         }
 
         .alarm-card.severity-critical {
@@ -478,6 +513,12 @@
                 z-index: 10;
                 text-align: center;
             }
+            
+            .alarm-count {
+                font-size: 0.9rem;
+                min-width: 1.3rem;
+                height: 1.3rem;
+            }
         }
         
         @media (min-width: 1200px) {
@@ -540,6 +581,12 @@
                 overflow-y: auto;
                 padding-bottom: 50px;
             }
+            
+            .alarm-count {
+                font-size: 1.1rem;
+                min-width: 1.8rem;
+                height: 1.8rem;
+            }
         }
     </style>
 </head>
@@ -568,7 +615,7 @@
                         <th>Nome do Equipamento</th>
                         <th>Código da Usina</th>
                         <th>Nome da Usina</th>
-                        <th>Tipo do Alerta</th>
+                        <!-- <th>Tipo do Alerta</th> -->
                         <th>Status</th>
                         <th>Alarmes</th>
                     </tr>
@@ -595,6 +642,7 @@
             <div id="modal-equipment-details">
                 <!-- Detalhes do equipamento serão inseridos aqui -->
             </div>
+        <br>
             <h3>Histórico de Alarmes</h3>
             <div id="modal-alarms">
                 <!-- Alarmes serão inseridos aqui -->
@@ -615,11 +663,58 @@
             return `${equipment.codigo}_${timestamp}`;
         }
         
-        // Processar os dados iniciais para adicionar IDs únicos
+        // Função para determinar a classe de severidade com base nos alarmes
+        function getHighestSeverityClass(alarmes) {
+            if (!alarmes || alarmes.length === 0 || alarmes[0].mensagem === "Sem alarmes") {
+                return "no-alarms";
+            }
+            
+            // Mapear severidade para um valor numérico para facilitar a comparação
+            const severityMap = {
+                "Crítica": 4,
+                "Alta": 3,
+                "Média": 2,
+                "Baixa": 1
+            };
+            
+            // Encontrar a severidade mais alta
+            let highestSeverity = 0;
+            
+            alarmes.forEach(alarme => {
+                const severityValue = severityMap[alarme.severidade] || 0;
+                if (severityValue > highestSeverity) {
+                    highestSeverity = severityValue;
+                }
+            });
+            
+            // Converter de volta para a classe CSS
+            switch (highestSeverity) {
+                case 4: return "severity-critical";
+                case 3: return "severity-high";
+                case 2: return "severity-medium";
+                case 1: return "severity-low";
+                default: return "no-alarms";
+            }
+        }
+        
+        // Função para contar o número de alarmes
+        function countAlarms(alarmes) {
+            if (!alarmes || alarmes.length === 0 || alarmes[0].mensagem === "Sem alarmes") {
+                return 0;
+            }
+            return alarmes.length;
+        }
+        
+        // Processar os dados iniciais para adicionar IDs únicos e informações de alarme
         let equipmentData = EQUIPMENT_DATA_PLACEHOLDER.map(equipment => {
+            const alarmCount = countAlarms(equipment.alarmes);
+            const severityClass = getHighestSeverityClass(equipment.alarmes);
+            
             return {
                 ...equipment,
-                uniqueId: generateUniqueId(equipment)
+                uniqueId: generateUniqueId(equipment),
+                alarmCount: alarmCount,
+                alarmSeverityClass: severityClass
             };
         });
         
@@ -649,9 +744,9 @@
                     <td>${equipment.nome}</td>
                     <td>${equipment.codigoUsina}</td>
                     <td>${equipment.nomeUsina}</td>
-                    <td>${equipment.tipoAlerta}</td>
+                    <!-- <td>${equipment.tipoAlerta}</td> -->
                     <td><span class="${equipment.statusClass}">${equipment.status}</span></td>
-                    <td><span class="emoji-alert">${equipment.emojiAlerta}</span></td>
+                    <td><span class="alarm-count ${equipment.alarmSeverityClass}">${equipment.alarmCount}</span></td>
                 `;
                 row.addEventListener('click', () => showModal(index));
                 tableBody.appendChild(row);
@@ -675,7 +770,7 @@
                         <div class="card-item"><span class="card-label">Usina</span><span class="card-value">${equipment.nomeUsina}</span></div>
                         <div class="card-item"><span class="card-label">Código Usina</span><span class="card-value">${equipment.codigoUsina}</span></div>
                         <div class="card-item"><span class="card-label">Tipo de Alerta</span><span class="card-value">${equipment.tipoAlerta}</span></div>
-                        <div class="card-item"><span class="card-label">Alarmes</span><span class="card-value emoji-alert">${equipment.emojiAlerta}</span></div>
+                        <div class="card-item"><span class="card-label">Alarmes</span><span class="card-value"><span class="alarm-count ${equipment.alarmSeverityClass}">${equipment.alarmCount}</span></span></div>
                     </div>
                 `;
                 card.addEventListener('click', () => showModal(index));
@@ -685,15 +780,18 @@
     
         function showModal(index) {
             const equipment = equipmentData[index];
-            document.getElementById('modal-title').textContent = `${equipment.nome} (${equipment.codigo})`;
+            document.getElementById('modal-title').textContent = `${equipment.nome} (${equipment.nomeUsina})`;
             document.getElementById('modal-equipment-details').innerHTML = `
-                <p><strong>Usina:</strong> ${equipment.nomeUsina} (${equipment.codigoUsina})</p>
-                <p><strong>Status:</strong> <span class="${equipment.statusClass}">${equipment.status}</span></p>
-                <p><strong>Tipo de Alerta:</strong> ${equipment.tipoAlerta}</p>
+                <p>
+                    <span class="${equipment.statusClass}" style="float: right;">${equipment.status}</span>
+                </p>
                 <p><strong>Horário de Previsão:</strong> ${equipment.dataPrevisto || 'Não disponível'}</p>
                 ${equipment.dataQuebra ? `<p><strong>Horário da Quebra:</strong> ${equipment.dataQuebra}</p>` : ''}
-                <p><strong>Alarmes:</strong> <span class="emoji-alert">${equipment.emojiAlerta}</span></p>
-                <p><strong>ID Único:</strong> ${equipment.uniqueId}</p>
+                <!-- 
+                <p><strong>Tipo de Alerta:</strong> ${equipment.tipoAlerta}</p>
+                <p><strong>Alarmes:</strong> <span class="alarm-count ${equipment.alarmSeverityClass}">${equipment.alarmCount}</span></p> 
+                <p><strong>ID Único:</strong> ${equipment.uniqueId}</p> 
+                -->
             `;
 
             const modalAlarms = document.getElementById('modal-alarms');
@@ -849,11 +947,16 @@
             fetch('/api/equipment-data')
                 .then(response => response.json())
                 .then(data => {
-                    // Adicionar IDs únicos aos novos dados
+                    // Adicionar IDs únicos e informações de alarme aos novos dados
                     const dataWithIds = data.map(equipment => {
+                        const alarmCount = countAlarms(equipment.alarmes);
+                        const severityClass = getHighestSeverityClass(equipment.alarmes);
+                        
                         return {
                             ...equipment,
-                            uniqueId: generateUniqueId(equipment)
+                            uniqueId: generateUniqueId(equipment),
+                            alarmCount: alarmCount,
+                            alarmSeverityClass: severityClass
                         };
                     });
                     
@@ -903,8 +1006,10 @@
                         
                         // Simular mudanças de status com menos frequência e de forma mais realista
                         const newData = equipmentData.map(eq => {
-                            // Preservar o ID único
+                            // Preservar o ID único e informações de alarme
                             const uniqueId = eq.uniqueId;
+                            const alarmCount = eq.alarmCount;
+                            const alarmSeverityClass = eq.alarmSeverityClass;
                             
                             // Apenas 20% de chance de tentar mudar o status
                             if (Math.random() < 0.2) {
@@ -915,7 +1020,10 @@
                                     ...eq,
                                     status: randomStatus,
                                     statusClass: randomStatus === "Funcionando" ? "status-ok" : 
-                                                 randomStatus === "Desligado sem falha" ? "status-warning" : "status-error"
+                                                 randomStatus === "Desligado sem falha" ? "status-warning" : "status-error",
+                                    uniqueId,
+                                    alarmCount,
+                                    alarmSeverityClass
                                 };
                             }
                             
