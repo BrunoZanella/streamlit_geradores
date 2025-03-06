@@ -608,6 +608,19 @@
     <script>
         let equipmentData = EQUIPMENT_DATA_PLACEHOLDER;
         let lastValidData = [...equipmentData];
+        
+        // Objeto para armazenar o histórico de status de cada equipamento
+        let statusHistory = {};
+        
+        // Inicializar o histórico de status para cada equipamento
+        equipmentData.forEach(equipment => {
+            statusHistory[equipment.codigo] = {
+                currentStatus: equipment.status,
+                pendingStatus: null,
+                pendingCount: 0,
+                lastUpdated: new Date()
+            };
+        });
     
         function populateTable() {
             const tableBody = document.getElementById('equipment-data');
@@ -730,6 +743,71 @@
             // Restaurar rolagem da página
             document.body.style.overflow = '';
         }
+        
+        // Função para verificar e atualizar o status de um equipamento
+        function verifyAndUpdateStatus(equipment, newStatus) {
+            const equipmentCode = equipment.codigo;
+            const history = statusHistory[equipmentCode];
+            
+            // Se o status não mudou, mantenha-o e resete qualquer verificação pendente
+            if (newStatus === history.currentStatus) {
+                history.pendingStatus = null;
+                history.pendingCount = 0;
+                return {
+                    ...equipment,
+                    status: history.currentStatus,
+                    statusClass: getStatusClass(history.currentStatus)
+                };
+            }
+            
+            // Se já existe um status pendente diferente do novo status, resete a contagem
+            if (history.pendingStatus !== null && history.pendingStatus !== newStatus) {
+                history.pendingStatus = newStatus;
+                history.pendingCount = 1;
+                return {
+                    ...equipment,
+                    status: history.currentStatus,
+                    statusClass: getStatusClass(history.currentStatus)
+                };
+            }
+            
+            // Se é a primeira detecção de mudança ou continuação da mesma mudança
+            if (history.pendingStatus === null || history.pendingStatus === newStatus) {
+                history.pendingStatus = newStatus;
+                history.pendingCount += 1;
+                
+                // Se a mudança foi detectada pelo menos 2 vezes, atualize o status
+                if (history.pendingCount >= 2) {
+                    history.currentStatus = newStatus;
+                    history.pendingStatus = null;
+                    history.pendingCount = 0;
+                    history.lastUpdated = new Date();
+                    
+                    return {
+                        ...equipment,
+                        status: newStatus,
+                        statusClass: getStatusClass(newStatus)
+                    };
+                }
+            }
+            
+            // Mantenha o status atual enquanto aguarda confirmação
+            return {
+                ...equipment,
+                status: history.currentStatus,
+                statusClass: getStatusClass(history.currentStatus)
+            };
+        }
+        
+        function getStatusClass(status) {
+            if (status === "Funcionando") {
+                return "status-ok";
+            } else if (status === "Desligado com falha") {
+                return "status-error";
+            } else {
+                return "status-warning";
+            }
+        }
     
         function updateData() {
             const statusDot = document.getElementById('status-dot');
@@ -738,8 +816,28 @@
             fetch('/api/equipment-data')
                 .then(response => response.json())
                 .then(data => {
-                    equipmentData = data;
-                    lastValidData = [...data];
+                    // Processar os dados recebidos com a verificação de status
+                    const processedData = data.map(newEquipment => {
+                        // Encontrar o equipamento correspondente nos dados atuais
+                        const existingEquipment = equipmentData.find(eq => eq.codigo === newEquipment.codigo);
+                        
+                        if (existingEquipment) {
+                            // Verificar e atualizar o status
+                            return verifyAndUpdateStatus(newEquipment, newEquipment.status);
+                        } else {
+                            // Se é um novo equipamento, inicializar seu histórico
+                            statusHistory[newEquipment.codigo] = {
+                                currentStatus: newEquipment.status,
+                                pendingStatus: null,
+                                pendingCount: 0,
+                                lastUpdated: new Date()
+                            };
+                            return newEquipment;
+                        }
+                    });
+                    
+                    equipmentData = processedData;
+                    lastValidData = [...processedData];
                     populateTable();
                     populateCards();
                     statusDot.className = 'status-dot';
@@ -747,7 +845,6 @@
                 })
                 .catch(error => {
                     console.error('Erro ao atualizar dados:', error);
-                    equipmentData = [...lastValidData];
                     statusDot.className = 'status-dot error';
                     statusText.textContent = `Erro na atualização. Usando dados de ${new Date().toLocaleTimeString()}`;
                 });
@@ -772,20 +869,30 @@
                 return new Promise((resolve, reject) => {
                     setTimeout(() => {
                         apiCallCount++;
-                        if (apiCallCount % 3 === 0) {
+                        if (apiCallCount % 5 === 0) {
                             reject(new Error('Erro simulado na API'));
                             return;
                         }
+                        
+                        // Simular mudanças de status com menos frequência e de forma mais realista
                         const newData = equipmentData.map(eq => {
-                            const statusOptions = ["Funcionando", "Desligado sem falha", "Desligado com falha"];
-                            const status = statusOptions[Math.floor(Math.random() * statusOptions.length)];
-                            return {
-                                ...eq,
-                                status,
-                                statusClass: status === "Funcionando" ? "status-ok" : 
-                                             status === "Desligado sem falha" ? "status-warning" : "status-error"
-                            };
+                            // Apenas 20% de chance de tentar mudar o status
+                            if (Math.random() < 0.2) {
+                                const statusOptions = ["Funcionando", "Desligado sem falha", "Desligado com falha"];
+                                const randomStatus = statusOptions[Math.floor(Math.random() * statusOptions.length)];
+                                
+                                return {
+                                    ...eq,
+                                    status: randomStatus,
+                                    statusClass: randomStatus === "Funcionando" ? "status-ok" : 
+                                                 randomStatus === "Desligado sem falha" ? "status-warning" : "status-error"
+                                };
+                            }
+                            
+                            // Se não mudar, retornar o equipamento como está
+                            return { ...eq };
                         });
+                        
                         resolve({ json: () => Promise.resolve(newData) });
                     }, 500);
                 });
