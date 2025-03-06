@@ -606,7 +606,23 @@
     </div>
     
     <script>
-        let equipmentData = EQUIPMENT_DATA_PLACEHOLDER;
+        // Função para gerar um ID único para cada equipamento
+        function generateUniqueId(equipment) {
+            // Usar o código do equipamento + data previsto (se disponível) ou timestamp atual
+            const timestamp = equipment.dataPrevisto ? 
+                              new Date(equipment.dataPrevisto).getTime() : 
+                              new Date().getTime();
+            return `${equipment.codigo}_${timestamp}`;
+        }
+        
+        // Processar os dados iniciais para adicionar IDs únicos
+        let equipmentData = EQUIPMENT_DATA_PLACEHOLDER.map(equipment => {
+            return {
+                ...equipment,
+                uniqueId: generateUniqueId(equipment)
+            };
+        });
+        
         let lastValidData = [...equipmentData];
         
         // Objeto para armazenar o histórico de status de cada equipamento
@@ -614,7 +630,7 @@
         
         // Inicializar o histórico de status para cada equipamento
         equipmentData.forEach(equipment => {
-            statusHistory[equipment.codigo] = {
+            statusHistory[equipment.uniqueId] = {
                 currentStatus: equipment.status,
                 pendingStatus: null,
                 pendingCount: 0,
@@ -677,6 +693,7 @@
                 <p><strong>Horário de Previsão:</strong> ${equipment.dataPrevisto || 'Não disponível'}</p>
                 ${equipment.dataQuebra ? `<p><strong>Horário da Quebra:</strong> ${equipment.dataQuebra}</p>` : ''}
                 <p><strong>Alarmes:</strong> <span class="emoji-alert">${equipment.emojiAlerta}</span></p>
+                <p><strong>ID Único:</strong> ${equipment.uniqueId}</p>
             `;
 
             const modalAlarms = document.getElementById('modal-alarms');
@@ -746,8 +763,24 @@
         
         // Função para verificar e atualizar o status de um equipamento
         function verifyAndUpdateStatus(equipment, newStatus) {
-            const equipmentCode = equipment.codigo;
-            const history = statusHistory[equipmentCode];
+            const uniqueId = equipment.uniqueId;
+            const history = statusHistory[uniqueId];
+            
+            if (!history) {
+                // Se não houver histórico para este ID único, criar um novo
+                statusHistory[uniqueId] = {
+                    currentStatus: newStatus,
+                    pendingStatus: null,
+                    pendingCount: 0,
+                    lastUpdated: new Date()
+                };
+                
+                return {
+                    ...equipment,
+                    status: newStatus,
+                    statusClass: getStatusClass(newStatus)
+                };
+            }
             
             // Se o status não mudou, mantenha-o e resete qualquer verificação pendente
             if (newStatus === history.currentStatus) {
@@ -816,24 +849,18 @@
             fetch('/api/equipment-data')
                 .then(response => response.json())
                 .then(data => {
+                    // Adicionar IDs únicos aos novos dados
+                    const dataWithIds = data.map(equipment => {
+                        return {
+                            ...equipment,
+                            uniqueId: generateUniqueId(equipment)
+                        };
+                    });
+                    
                     // Processar os dados recebidos com a verificação de status
-                    const processedData = data.map(newEquipment => {
-                        // Encontrar o equipamento correspondente nos dados atuais
-                        const existingEquipment = equipmentData.find(eq => eq.codigo === newEquipment.codigo);
-                        
-                        if (existingEquipment) {
-                            // Verificar e atualizar o status
-                            return verifyAndUpdateStatus(newEquipment, newEquipment.status);
-                        } else {
-                            // Se é um novo equipamento, inicializar seu histórico
-                            statusHistory[newEquipment.codigo] = {
-                                currentStatus: newEquipment.status,
-                                pendingStatus: null,
-                                pendingCount: 0,
-                                lastUpdated: new Date()
-                            };
-                            return newEquipment;
-                        }
+                    const processedData = dataWithIds.map(newEquipment => {
+                        // Verificar e atualizar o status
+                        return verifyAndUpdateStatus(newEquipment, newEquipment.status);
                     });
                     
                     equipmentData = processedData;
@@ -876,6 +903,9 @@
                         
                         // Simular mudanças de status com menos frequência e de forma mais realista
                         const newData = equipmentData.map(eq => {
+                            // Preservar o ID único
+                            const uniqueId = eq.uniqueId;
+                            
                             // Apenas 20% de chance de tentar mudar o status
                             if (Math.random() < 0.2) {
                                 const statusOptions = ["Funcionando", "Desligado sem falha", "Desligado com falha"];
