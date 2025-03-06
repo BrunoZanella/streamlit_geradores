@@ -780,7 +780,12 @@
     
         function showModal(index) {
             const equipment = equipmentData[index];
-            document.getElementById('modal-title').textContent = `${equipment.nome} (${equipment.nomeUsina})`;
+            const modalTitle = document.getElementById('modal-title');
+    
+            modalTitle.innerHTML = `<a href="https://supervisorio.brggeradores.com.br/beta/detalhesgmg.php?codUsina=${equipment.codigoUsina}&codEquip=${equipment.codigo}" 
+                target="_blank" style="text-decoration: none; color: inherit;">
+                ${equipment.nome} (${equipment.nomeUsina})
+            </a>`;            
             document.getElementById('modal-equipment-details').innerHTML = `
                 <p>
                     <span class="${equipment.statusClass}" style="float: right;">${equipment.status}</span>
