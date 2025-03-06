@@ -95,7 +95,7 @@ async def fetch_data_from_mysql():
             minsize=int(st.secrets["mysql"]["minsize"]),
             maxsize=int(st.secrets["mysql"]["maxsize"])
         )
-        
+
         # Consulta para o gauge - contagem de equipamentos com alerta=1 e cod_campo=114
         async with pool.acquire() as conn:
             async with conn.cursor() as cursor:
@@ -192,6 +192,7 @@ async def fetch_data_from_mysql():
             cod_usina = eq[1]
             nome_usina = eq[4]
             nome_equipamento = eq[3]
+            print('nome_usina',nome_usina)
                         
             # Verificar status do equipamento
             if cod_equipamento in equipamentos_com_quebras and equipamentos_com_quebras[cod_equipamento]['data_cadastro_quebra']:
