@@ -1,0 +1,14 @@
+tenho uma pool de conexoes para o meu banco mysql:
+
+    pool = await aiomysql.create_pool(
+        host=st.secrets["mysql"]["host"],
+        port=int(st.secrets["mysql"]["port"]),
+        user=st.secrets["mysql"]["user"],
+        password=st.secrets["mysql"]["password"],
+        db=st.secrets["mysql"]["database"],
+        minsize=st.secrets["mysql"]["minsize"],
+        maxsize=st.secrets["mysql"]["maxsize"]
+    )
+
+
+quero que no gauge 

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento de Equipamentos</title>
+    <style>
+        :root {
+            --background-color: #0A1929;
+            --primary-color: #1E3A5F;
+            --accent-color: #2E86C1;
+            --text-color: white;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 70px 20px 20px 20px;
+        }
+        
+        .title {
+            color: var(--text-color);
+            text-align: center;
+            font-size: 1.5rem;
+            margin-top: 5px;
+            margin-bottom: 1rem;
+        }
+        
+        .subtitle {
+            color: var(--text-color);
+            text-align: center;
+            font-size: 1.0rem;
+            margin-bottom: 1rem;
+        }
+        
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Centraliza verticalmente */
+            margin: 2rem auto 1rem;
+            padding-top: 10px;
+            max-width: 250px;
+            width: 100%; /* Faz o gauge se adaptar ao espaço disponível */
+            overflow: hidden; /* Garante que nada transborde */
+        }
+        
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: var(--primary-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .table-container {
+            max-height: 60vh;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            text-align: center;
+            padding: 12px;
+            font-weight: bold;
+            border-bottom: 2px solid var(--accent-color);
+        }
+        
+        td {
+            text-align: center;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+        
+        tr:hover {
+            background-color: rgba(46, 134, 193, 0.2);
+        }
+        
+        .status-ok {
+            background-color: var(--success-color);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .status-warning {
+            background-color: var(--warning-color);
+            color: black;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .status-error {
+            background-color: var(--danger-color);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+        
+        .modal-content {
+            background-color: var(--primary-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            margin: 20px auto;
+            overflow-y: visible;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .alarm-table {
+            width: 100%;
+            margin-top: 15px;
+        }
+        
+        .severity-low {
+            color: var(--success-color);
+        }
+        
+        .severity-medium {
+            color: var(--warning-color);
+        }
+        
+        .severity-high {
+            color: #fd7e14;
+        }
+        
+        .severity-critical {
+            color: var(--danger-color);
+        }
+        
+        .btn {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        /* Cards para dispositivos móveis */
+        .card-container {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .card {
+            background-color: var(--primary-color);
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--accent-color);
+            padding-bottom: 10px;
+        }
+        
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .card-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .card-item {
+            margin-bottom: 5px;
+        }
+        
+        .card-label {
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+            display: block;
+        }
+        
+        .card-value {
+            font-size: 0.9rem;
+        }
+
+        .alarm-card-container {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+            max-height: 50vh;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+
+        .alarm-card {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .alarm-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .alarm-card-time {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .alarm-card-body {
+            margin-bottom: 8px;
+        }
+
+        .alarm-card-description {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .alarm-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .alarm-card.severity-low {
+            border-left-color: var(--success-color);
+        }
+
+        .alarm-card.severity-medium {
+            border-left-color: var(--warning-color);
+        }
+
+        .alarm-card.severity-high {
+            border-left-color: #fd7e14;
+        }
+
+        .alarm-card.severity-critical {
+            border-left-color: var(--danger-color);
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success-color);
+            margin-right: 5px;
+            display: inline-block;
+        }
+        
+        .status-dot.error {
+            background-color: var(--danger-color);
+        }
+        
+        /* Responsividade para dispositivos móveis */
+        @media (max-width: 768px) {
+            body {
+                overflow-x: hidden;
+            }
+            
+            .title {
+                font-size: 1.1rem;
+                margin-bottom: 2px;
+                margin-top: 1px;
+            }
+            
+            .subtitle {
+                font-size: 0.75rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .modal-content {
+                width: 95%;
+                padding: 0.2rem;
+                position: relative;
+                max-height: 90vh;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            table {
+                display: none;
+            }
+            
+            .card-container {
+                display: flex;
+                padding: 0 -2px;
+                width: calc(95%);
+                margin: 0 -2px;
+            }
+            
+            .container {
+                padding: 80px 0px 0px 0px;
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+            
+            /* Ocultar tabela de alarmes e mostrar cards em telas pequenas */
+            .alarm-table {
+                display: none;
+            }
+            
+            .alarm-card-container {
+                display: flex;
+                padding: 0;
+                max-height: 50vh;
+                overflow-y: auto;
+                margin-bottom: 10px;
+            }
+            
+            .gauge-container {
+                margin-top: 1rem;
+                margin-bottom: 0.8rem;
+            }
+            
+            .card {
+                padding: 10px;
+                margin-bottom: 10px;
+                width: 100%;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .card-title {
+                font-size: 1rem;
+            }
+            
+            .card-label {
+                font-size: 0.7rem;
+            }
+            
+            .card-value {
+                font-size: 0.8rem;
+            }
+            
+            .status-indicator {
+                font-size: 0.7rem;
+                margin-bottom: 10px;
+            }
+            
+            .alarm-card {
+                padding: 8px;
+                margin-bottom: 8px;
+            }
+            
+            .alarm-card-header {
+                font-size: 0.8rem;
+            }
+            
+            .alarm-card-time {
+                font-size: 0.7rem;
+            }
+            
+            .alarm-card-description {
+                font-size: 0.8rem;
+            }
+            
+            .alarm-card-footer {
+                font-size: 0.7rem;
+            }
+            
+            #modal-title {
+                font-size: 1.1rem;
+            }
+            
+            #modal-equipment-details {
+                font-size: 0.9rem;
+            }
+            
+            #modal-alarms h3 {
+                font-size: 1rem;
+            }
+            
+            .btn {
+                padding: 6px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .modal-header {
+                position: sticky;
+                top: 0;
+                background-color: var(--primary-color);
+                z-index: 10;
+                padding-top: 5px;
+            }
+            
+            .modal-footer {
+                position: sticky;
+                bottom: 0;
+                background-color: var(--primary-color);
+                padding: 10px 0;
+                z-index: 10;
+                text-align: center;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1800px;
+            }
+            
+            .title {
+                font-size: 2rem;
+                margin-bottom: 1rem;
+            }
+            
+            .subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .gauge-container {
+                max-width: 350px;
+            }
+            
+            table th, table td {
+                padding: 15px;
+                font-size: 1.1rem;
+            }
+            
+            .modal-content {
+                max-width: 900px;
+                padding: 2rem;
+            }
+            
+            #modal-title {
+                font-size: 1.8rem;
+            }
+            
+            #modal-equipment-details {
+                font-size: 1.2rem;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 1.1rem;
+            }
+            
+            .alarm-table {
+                display: table;
+                overflow-y: auto;
+            }
+            
+            .alarm-card-container {
+                display: none;
+            }
+            
+            html, body {
+                height: 100%;
+                overflow-y: hidden;
+            }
+            
+            .container {
+                height: 100vh;
+                overflow-y: auto;
+                padding-bottom: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Monitoramento de Equipamentos</h1>
+        
+        <div id="gauge-container" class="gauge-container">
+            <!-- O gauge será inserido aqui -->
+            GAUGE_PLACEHOLDER
+        </div>
+        
+        <h2 class="subtitle">Lista de Equipamentos</h2>
+
+        <!-- Tabela para telas grandes -->
+        <div class="table-container">
+            <table id="equipment-table">
+                <thead>
+                    <tr>
+                        <th>Código do Equipamento</th>
+                        <th>Nome do Equipamento</th>
+                        <th>Código da Usina</th>
+                        <th>Nome da Usina</th>
+                        <th>Tipo do Alerta</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="equipment-data">
+                    <!-- Os dados dos equipamentos serão inseridos aqui dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Cards para telas pequenas -->
+        <div id="card-container" class="card-container">
+            <!-- Os cards serão inseridos aqui dinamicamente -->
+        </div>
+        
+        <div class="status-indicator">
+            <span id="status-dot" class="status-dot"></span>
+            <span id="status-text">Dados atualizados</span>
+        </div>
+    </div>
+    
+    <div id="alarm-modal" class="modal">
+        <div class="modal-content" tabindex="-1">
+            <div class="modal-header">
+                <h2 id="modal-title">Detalhes do Equipamento</h2>
+                <button class="close-button" onclick="closeModal()">×</button>
+            </div>
+            <div id="modal-equipment-details">
+                <!-- Detalhes do equipamento serão inseridos aqui -->
+            </div>
+            <h3>Histórico de Alarmes</h3>
+            <div id="modal-alarms">
+                <!-- Alarmes serão inseridos aqui -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let equipmentData = EQUIPMENT_DATA_PLACEHOLDER;
+        let lastValidData = [...equipmentData];
+    
+        function populateTable() {
+            const tableBody = document.getElementById('equipment-data');
+            tableBody.innerHTML = '';
+    
+            equipmentData.forEach((equipment, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${equipment.codigo}</td>
+                    <td>${equipment.nome}</td>
+                    <td>${equipment.codigoUsina}</td>
+                    <td>${equipment.nomeUsina}</td>
+                    <td>${equipment.tipoAlerta}</td>
+                    <td><span class="${equipment.statusClass}">${equipment.status}</span></td>
+                `;
+                row.addEventListener('click', () => showModal(index));
+                tableBody.appendChild(row);
+            });
+        }
+    
+        function populateCards() {
+            const cardContainer = document.getElementById('card-container');
+            cardContainer.innerHTML = '';
+    
+            equipmentData.forEach((equipment, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h3 class="card-title">${equipment.nome}</h3>
+                        <span class="${equipment.statusClass}">${equipment.status}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-item"><span class="card-label">Código</span><span class="card-value">${equipment.codigo}</span></div>
+                        <div class="card-item"><span class="card-label">Usina</span><span class="card-value">${equipment.nomeUsina}</span></div>
+                        <div class="card-item"><span class="card-label">Código Usina</span><span class="card-value">${equipment.codigoUsina}</span></div>
+                        <div class="card-item"><span class="card-label">Tipo de Alerta</span><span class="card-value">${equipment.tipoAlerta}</span></div>
+                    </div>
+                `;
+                card.addEventListener('click', () => showModal(index));
+                cardContainer.appendChild(card);
+            });
+        }
+    
+        function showModal(index) {
+            const equipment = equipmentData[index];
+            document.getElementById('modal-title').textContent = `${equipment.nome} (${equipment.codigo})`;
+            document.getElementById('modal-equipment-details').innerHTML = `
+                <p><strong>Usina:</strong> ${equipment.nomeUsina} (${equipment.codigoUsina})</p>
+                <p><strong>Status:</strong> <span class="${equipment.statusClass}">${equipment.status}</span></p>
+                <p><strong>Tipo de Alerta:</strong> ${equipment.tipoAlerta}</p>
+            `;
+
+            const modalAlarms = document.getElementById('modal-alarms');
+            if (equipment.alarmes && equipment.alarmes.length > 0) {
+                let alarmsHtml = `
+                    <table class="alarm-table">
+                        <thead>
+                            <tr><th>Data/Hora</th><th>Tipo</th><th>Descrição</th><th>Severidade</th></tr>
+                        </thead>
+                        <tbody>
+                `;
+                equipment.alarmes.forEach(alarm => {
+                    const severityClass = getSeverityClass(alarm.severidade);
+                    alarmsHtml += `
+                        <tr>
+                            <td>${alarm.timestamp}</td>
+                            <td>${alarm.tipo}</td>
+                            <td>${alarm.descricao}</td>
+                            <td class="${severityClass}">${alarm.severidade}</td>
+                        </tr>
+                    `;
+                });
+                alarmsHtml += '</tbody></table><div class="alarm-card-container">';
+                equipment.alarmes.forEach(alarm => {
+                    const severityClass = getSeverityClass(alarm.severidade);
+                    alarmsHtml += `
+                        <div class="alarm-card ${severityClass}">
+                            <div class="alarm-card-header"><strong>${alarm.tipo}</strong><span class="alarm-card-time">${alarm.timestamp}</span></div>
+                            <div class="alarm-card-body"><div class="alarm-card-description">${alarm.descricao}</div></div>
+                            <div class="alarm-card-footer"><span class="${severityClass}">Severidade: ${alarm.severidade}</span></div>
+                        </div>
+                    `;
+                });
+                alarmsHtml += '</div>';
+                modalAlarms.innerHTML = alarmsHtml;
+            } else {
+                modalAlarms.innerHTML = '<p>Nenhum alarme registrado para este equipamento.</p>';
+            }
+
+            // Impedir rolagem da página quando o modal estiver aberto
+            document.body.style.overflow = 'hidden';
+            
+            const modal = document.getElementById('alarm-modal');
+            modal.style.display = 'flex';
+            
+            // Focar no modal
+            setTimeout(() => {
+                document.querySelector('.modal-content').focus();
+            }, 100);
+        }
+    
+        function getSeverityClass(severidade) {
+            switch (severidade) {
+                case 'Baixa': return 'severity-low';
+                case 'Média': return 'severity-medium';
+                case 'Alta': return 'severity-high';
+                case 'Crítica': return 'severity-critical';
+                default: return '';
+            }
+        }
+    
+        function closeModal() {
+            document.getElementById('alarm-modal').style.display = 'none';
+            // Restaurar rolagem da página
+            document.body.style.overflow = '';
+        }
+    
+        function updateData() {
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+    
+            fetch('/api/equipment-data')
+                .then(response => response.json())
+                .then(data => {
+                    equipmentData = data;
+                    lastValidData = [...data];
+                    populateTable();
+                    populateCards();
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = `Dados atualizados em ${new Date().toLocaleTimeString()}`;
+                })
+                .catch(error => {
+                    console.error('Erro ao atualizar dados:', error);
+                    equipmentData = [...lastValidData];
+                    statusDot.className = 'status-dot error';
+                    statusText.textContent = `Erro na atualização. Usando dados de ${new Date().toLocaleTimeString()}`;
+                });
+        }
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            populateTable();
+            populateCards();
+            setInterval(updateData, 60000);
+        });
+    
+        window.addEventListener('click', (event) => {
+            if (event.target === document.getElementById('alarm-modal')) {
+                closeModal();
+            }
+        });
+    
+        let apiCallCount = 0;
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+            if (url === '/api/equipment-data') {
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        apiCallCount++;
+                        if (apiCallCount % 3 === 0) {
+                            reject(new Error('Erro simulado na API'));
+                            return;
+                        }
+                        const newData = equipmentData.map(eq => {
+                            const statusOptions = ["Funcionando", "Desligado sem falha", "Desligado com falha"];
+                            const status = statusOptions[Math.floor(Math.random() * statusOptions.length)];
+                            return {
+                                ...eq,
+                                status,
+                                statusClass: status === "Funcionando" ? "status-ok" : 
+                                             status === "Desligado sem falha" ? "status-warning" : "status-error"
+                            };
+                        });
+                        resolve({ json: () => Promise.resolve(newData) });
+                    }, 500);
+                });
+            }
+            return originalFetch(url, options);
+        };
+    </script>
+    
+</body>
+</html>
+
