@@ -117,6 +117,10 @@
             display: inline-block;
         }
         
+        .emoji-alert {
+            font-size: 1.2rem;
+        }
+        
         .modal {
             display: none;
             position: fixed;
@@ -566,6 +570,7 @@
                         <th>Nome da Usina</th>
                         <th>Tipo do Alerta</th>
                         <th>Status</th>
+                        <th>Alarmes</th>
                     </tr>
                 </thead>
                 <tbody id="equipment-data">
@@ -617,6 +622,7 @@
                     <td>${equipment.nomeUsina}</td>
                     <td>${equipment.tipoAlerta}</td>
                     <td><span class="${equipment.statusClass}">${equipment.status}</span></td>
+                    <td><span class="emoji-alert">${equipment.emojiAlerta}</span></td>
                 `;
                 row.addEventListener('click', () => showModal(index));
                 tableBody.appendChild(row);
@@ -640,6 +646,7 @@
                         <div class="card-item"><span class="card-label">Usina</span><span class="card-value">${equipment.nomeUsina}</span></div>
                         <div class="card-item"><span class="card-label">Código Usina</span><span class="card-value">${equipment.codigoUsina}</span></div>
                         <div class="card-item"><span class="card-label">Tipo de Alerta</span><span class="card-value">${equipment.tipoAlerta}</span></div>
+                        <div class="card-item"><span class="card-label">Alarmes</span><span class="card-value emoji-alert">${equipment.emojiAlerta}</span></div>
                     </div>
                 `;
                 card.addEventListener('click', () => showModal(index));
@@ -654,14 +661,17 @@
                 <p><strong>Usina:</strong> ${equipment.nomeUsina} (${equipment.codigoUsina})</p>
                 <p><strong>Status:</strong> <span class="${equipment.statusClass}">${equipment.status}</span></p>
                 <p><strong>Tipo de Alerta:</strong> ${equipment.tipoAlerta}</p>
+                <p><strong>Horário de Previsão:</strong> ${equipment.dataPrevisto || 'Não disponível'}</p>
+                ${equipment.dataQuebra ? `<p><strong>Horário da Quebra:</strong> ${equipment.dataQuebra}</p>` : ''}
+                <p><strong>Alarmes:</strong> <span class="emoji-alert">${equipment.emojiAlerta}</span></p>
             `;
 
             const modalAlarms = document.getElementById('modal-alarms');
-            if (equipment.alarmes && equipment.alarmes.length > 0) {
+            if (equipment.alarmes && equipment.alarmes.length > 0 && equipment.alarmes[0].mensagem !== "Sem alarmes") {
                 let alarmsHtml = `
                     <table class="alarm-table">
                         <thead>
-                            <tr><th>Data/Hora</th><th>Tipo</th><th>Descrição</th><th>Severidade</th></tr>
+                            <tr><th>Data/Hora</th><th>Código</th><th>Descrição</th><th>Severidade</th></tr>
                         </thead>
                         <tbody>
                 `;
@@ -669,8 +679,8 @@
                     const severityClass = getSeverityClass(alarm.severidade);
                     alarmsHtml += `
                         <tr>
-                            <td>${alarm.timestamp}</td>
-                            <td>${alarm.tipo}</td>
+                            <td>${alarm.data_cadastro}</td>
+                            <td>${alarm.cod_alarme}</td>
                             <td>${alarm.descricao}</td>
                             <td class="${severityClass}">${alarm.severidade}</td>
                         </tr>
@@ -681,7 +691,7 @@
                     const severityClass = getSeverityClass(alarm.severidade);
                     alarmsHtml += `
                         <div class="alarm-card ${severityClass}">
-                            <div class="alarm-card-header"><strong>${alarm.tipo}</strong><span class="alarm-card-time">${alarm.timestamp}</span></div>
+                            <div class="alarm-card-header"><strong>Código: ${alarm.cod_alarme}</strong><span class="alarm-card-time">${alarm.data_cadastro}</span></div>
                             <div class="alarm-card-body"><div class="alarm-card-description">${alarm.descricao}</div></div>
                             <div class="alarm-card-footer"><span class="${severityClass}">Severidade: ${alarm.severidade}</span></div>
                         </div>
@@ -786,4 +796,3 @@
     
 </body>
 </html>
-

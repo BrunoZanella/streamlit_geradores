@@ -1,3 +1,8 @@
+quero que sete o utc como sao paulo para que tudo fique no utc certo independente do servidor
 quero que no modal do equipamento mostre a hora que entrou na prvisao e se teve quebra a hora da quebra.
 quero que os equipamentos sempre fiquem em ordem de o mais novo na primeira linha.
-organize a questao do status, as vezez mostra equipamento como falaha mas nao teve ou ainda esta ligado
+organize a questao do status, as vezez mostra equipamento como falha mas nao teve ou ainda esta ligado, equipamentos que apareceram duas vezes e tem uma quebra, coloque a quebra sempre no mais antigo caso nao tenha quebra para ambos e se estiver funcioandno coloque o mais recentente como funcinando ou parada sem quebra caso nao esteja funcionando
+
+codigos_alarmes_desejados = [1, 240, 243, 244, 253]
+para retornar os alarmes do equipamento, va na tabela sup_geral.log_alarmes e coloque o cod_equipamento na coluna cod_equipamento, na coluna data_cadastro coloque o data_cadastro_previsto de log_relatorio_quebras e pode colocar ate 10 minutos antes que esse horario e retorne a coluna cod_alarme e data_cadastro desse periodo de data_cadastro_previsto ate o agora, va na tabela sup_geral.lista_alarmes coloque o cod_alarne na coluna codigo e retorne a coluna descricao. no modal coloque na coluna data/hora a hora do alarme em tipo mude para codigo e coloque o cod_alarme em descricao retorne a descricao do alarme e severidade coloque em laranjado os alarmes que estao na lista codigos_alarmes_desejados, em vermelho coloque os alarmes que na descricao tenha valor 3 no nome e em verde que nao atenda esses requisitos. 
+se nao tiver alarme coloque sem alarmes
