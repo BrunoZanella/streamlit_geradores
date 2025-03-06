@@ -542,6 +542,11 @@
 <body>
     <div class="container">
         <h1 class="title">Monitoramento de Equipamentos</h1>
+
+        <div class="status-indicator">
+            <span id="status-dot" class="status-dot"></span>
+            <span id="status-text">Dados atualizados</span>
+        </div>
         
         <div id="gauge-container" class="gauge-container">
             <!-- O gauge será inserido aqui -->
@@ -574,10 +579,6 @@
             <!-- Os cards serão inseridos aqui dinamicamente -->
         </div>
         
-        <div class="status-indicator">
-            <span id="status-dot" class="status-dot"></span>
-            <span id="status-text">Dados atualizados</span>
-        </div>
     </div>
     
     <div id="alarm-modal" class="modal">
