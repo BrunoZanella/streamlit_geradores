@@ -1,14 +1,3 @@
-tenho uma pool de conexoes para o meu banco mysql:
-
-    pool = await aiomysql.create_pool(
-        host=st.secrets["mysql"]["host"],
-        port=int(st.secrets["mysql"]["port"]),
-        user=st.secrets["mysql"]["user"],
-        password=st.secrets["mysql"]["password"],
-        db=st.secrets["mysql"]["database"],
-        minsize=st.secrets["mysql"]["minsize"],
-        maxsize=st.secrets["mysql"]["maxsize"]
-    )
-
-
-quero que no gauge 
+quero que no modal do equipamento mostre a hora que entrou na prvisao e se teve quebra a hora da quebra.
+quero que os equipamentos sempre fiquem em ordem de o mais novo na primeira linha.
+organize a questao do status, as vezez mostra equipamento como falaha mas nao teve ou ainda esta ligado

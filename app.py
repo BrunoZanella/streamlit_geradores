@@ -287,20 +287,33 @@ for eq in mysql_data["equipamentos"]:
         "alarmes": generate_alarms(eq["cod_equipamento"], eq["nome_equipamento"])
     })
 
-# Se não houver dados reais, usar dados de exemplo
+# # Se não houver dados reais, usar dados de exemplo
+# if not equipment_data:
+#     df = generate_sample_data(12)
+#     for _, row in df.iterrows():
+#         equipment_data.append({
+#             "codigo": row["Código do Equipamento"],
+#             "nome": row["Nome do Equipamento"],
+#             "codigoUsina": row["Código da Usina"],
+#             "nomeUsina": row["Nome da Usina"],
+#             "tipoAlerta": row["Tipo do Alerta"],
+#             "status": row["Status"],
+#             "statusClass": get_status_class(row["Status"]),
+#             "alarmes": generate_alarms(row["Código do Equipamento"], row["Nome do Equipamento"])
+#         })
+
+# Se não houver dados reais, adicionar apenas um item com traços
 if not equipment_data:
-    df = generate_sample_data(12)
-    for _, row in df.iterrows():
-        equipment_data.append({
-            "codigo": row["Código do Equipamento"],
-            "nome": row["Nome do Equipamento"],
-            "codigoUsina": row["Código da Usina"],
-            "nomeUsina": row["Nome da Usina"],
-            "tipoAlerta": row["Tipo do Alerta"],
-            "status": row["Status"],
-            "statusClass": get_status_class(row["Status"]),
-            "alarmes": generate_alarms(row["Código do Equipamento"], row["Nome do Equipamento"])
-        })
+    equipment_data.append({
+        "codigo": "-",
+        "nome": "-",
+        "codigoUsina": "-",
+        "nomeUsina": "-",
+        "tipoAlerta": "-",
+        "status": "-",
+        "statusClass": "-",
+        "alarmes": "-"
+    })
 
 
 # Ler o arquivo HTML externo
