@@ -9,6 +9,7 @@ import os
 import aiomysql
 import asyncio
 import pytz
+import re
 
 # Configuração do fuso horário de São Paulo
 sao_paulo_tz = pytz.timezone('America/Sao_Paulo')
@@ -17,9 +18,15 @@ sao_paulo_tz = pytz.timezone('America/Sao_Paulo')
 def utc_to_sao_paulo(dt):
     if dt is None:
         return None
-    if dt.tzinfo is None:  # Se o datetime não tiver informação de timezone, assume UTC
-        dt = dt.replace(tzinfo=pytz.UTC)
-    return dt.astimezone(sao_paulo_tz)
+    # Forçar o uso do horário de São Paulo, ignorando o timezone do servidor
+    sao_paulo_now = datetime.now(sao_paulo_tz)
+    server_now = datetime.now()
+    # Calcular a diferença entre o horário do servidor e o horário de São Paulo
+    time_diff = sao_paulo_now.replace(tzinfo=None) - server_now
+    # Ajustar o datetime recebido com a diferença calculada
+    adjusted_dt = dt + time_diff
+    # Converter para o timezone de São Paulo
+    return adjusted_dt.replace(tzinfo=pytz.UTC).astimezone(sao_paulo_tz)
 
 # Ocultar o cabeçalho e o rodapé padrão do Streamlit
 st.set_page_config(
@@ -223,12 +230,18 @@ async def fetch_data_from_mysql():
                             descricao = result_descricao[0] if result_descricao else "Descrição não disponível"
                             
                             # Determinar severidade
-                            if cod_alarme in codigos_alarmes_desejados:
-                                severidade = "Alta"
-                            elif "3" in descricao:
-                                severidade = "Crítica"
+                            if "id" in descricao.lower():
+                                severidade = "Baixa"  # Verde para alarmes com "id" no nome
                             else:
-                                severidade = "Baixa"
+                                # Verificar se o alarme termina com um número 3 ou maior
+                                # Extrair o último caractere da descrição e verificar se é um dígito
+                                ultimo_char = descricao.strip()[-1] if descricao.strip() else ""
+                                if ultimo_char.isdigit() and int(ultimo_char) >= 3:
+                                    severidade = "Crítica"  # Vermelho para alarmes que terminam com 3 ou maior
+                                elif cod_alarme in codigos_alarmes_desejados:
+                                    severidade = "Alta"  # Laranja para alarmes na lista de desejados
+                                else:
+                                    severidade = "Baixa"  # Verde para os demais alarmes
                             
                             # Converter UTC para horário de São Paulo
                             data_cadastro_sp = utc_to_sao_paulo(data_cadastro)
@@ -471,3 +484,4 @@ else:
     
     # Renderizar o HTML
     st.components.v1.html(html_content, height=1000, scrolling=True)
+
