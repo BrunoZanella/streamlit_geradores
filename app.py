@@ -9,24 +9,24 @@ import os
 import aiomysql
 import asyncio
 import pytz
-import re
 
 # Configuração do fuso horário de São Paulo
 sao_paulo_tz = pytz.timezone('America/Sao_Paulo')
 
-# Função para converter UTC para o horário de São Paulo
-def utc_to_sao_paulo(dt):
+# Função para converter horários do banco para o formato correto
+def format_datetime(dt):
     if dt is None:
         return None
-    # Forçar o uso do horário de São Paulo, ignorando o timezone do servidor
-    sao_paulo_now = datetime.now(sao_paulo_tz)
-    server_now = datetime.now()
-    # Calcular a diferença entre o horário do servidor e o horário de São Paulo
-    time_diff = sao_paulo_now.replace(tzinfo=None) - server_now
-    # Ajustar o datetime recebido com a diferença calculada
-    adjusted_dt = dt + time_diff
-    # Converter para o timezone de São Paulo
-    return adjusted_dt.replace(tzinfo=pytz.UTC).astimezone(sao_paulo_tz)
+    
+    # Assumir que o horário do banco já está no fuso horário de São Paulo
+    # Apenas formatar para exibição sem alterar o fuso horário
+    if isinstance(dt, str):
+        try:
+            dt = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return dt
+    
+    return dt.strftime("%d/%m/%Y %H:%M:%S")
 
 # Ocultar o cabeçalho e o rodapé padrão do Streamlit
 st.set_page_config(
@@ -243,12 +243,12 @@ async def fetch_data_from_mysql():
                                 else:
                                     severidade = "Baixa"  # Verde para os demais alarmes
                             
-                            # Converter UTC para horário de São Paulo
-                            data_cadastro_sp = utc_to_sao_paulo(data_cadastro)
+                            # Formatar a data sem alterar o fuso horário
+                            data_cadastro_formatada = format_datetime(data_cadastro)
                             
                             alarmes_equipamento.append({
                                 "cod_alarme": cod_alarme,
-                                "data_cadastro": data_cadastro_sp.strftime("%d/%m/%Y %H:%M:%S") if data_cadastro_sp else None,
+                                "data_cadastro": data_cadastro_formatada,
                                 "descricao": descricao,
                                 "severidade": severidade
                             })
@@ -289,9 +289,9 @@ async def fetch_data_from_mysql():
             data_cadastro_quebra = eq[2]
             data_cadastro_previsto = eq[3]
             
-            # Converter horários para o fuso horário de São Paulo
-            data_cadastro_quebra_sp = utc_to_sao_paulo(data_cadastro_quebra) if data_cadastro_quebra else None
-            data_cadastro_previsto_sp = utc_to_sao_paulo(data_cadastro_previsto) if data_cadastro_previsto else None
+            # Formatar as datas sem alterar o fuso horário
+            data_cadastro_quebra_formatada = format_datetime(data_cadastro_quebra)
+            data_cadastro_previsto_formatada = format_datetime(data_cadastro_previsto)
             
             if cod_equipamento in equipamentos_com_quebras:
                 # Se este equipamento já existe, manter o que tem quebra
@@ -305,28 +305,27 @@ async def fetch_data_from_mysql():
                     equipamentos_com_quebras[cod_equipamento] = {
                         'cod_equipamento': eq[0],
                         'cod_usina': eq[1],
-                        'data_cadastro_quebra': data_cadastro_quebra_sp,
-                        'data_cadastro_previsto': data_cadastro_previsto_sp,
+                        'data_cadastro_quebra': data_cadastro_quebra_formatada,
+                        'data_cadastro_previsto': data_cadastro_previsto_formatada,
                         'nome_equipamento': eq[4],
                         'nome_usina': eq[5]
                     }
                 elif not current_has_breakdown and not existing_has_breakdown:
                     # Nenhum tem quebra, manter o mais novo (já ordenado DESC)
-                    if existing_eq.get('data_cadastro_previsto') < data_cadastro_previsto_sp:
-                        equipamentos_com_quebras[cod_equipamento] = {
-                            'cod_equipamento': eq[0],
-                            'cod_usina': eq[1],
-                            'data_cadastro_quebra': data_cadastro_quebra_sp,
-                            'data_cadastro_previsto': data_cadastro_previsto_sp,
-                            'nome_equipamento': eq[4],
-                            'nome_usina': eq[5]
-                        }
+                    equipamentos_com_quebras[cod_equipamento] = {
+                        'cod_equipamento': eq[0],
+                        'cod_usina': eq[1],
+                        'data_cadastro_quebra': data_cadastro_quebra_formatada,
+                        'data_cadastro_previsto': data_cadastro_previsto_formatada,
+                        'nome_equipamento': eq[4],
+                        'nome_usina': eq[5]
+                    }
             else:
                 equipamentos_com_quebras[cod_equipamento] = {
                     'cod_equipamento': eq[0],
                     'cod_usina': eq[1],
-                    'data_cadastro_quebra': data_cadastro_quebra_sp,
-                    'data_cadastro_previsto': data_cadastro_previsto_sp,
+                    'data_cadastro_quebra': data_cadastro_quebra_formatada,
+                    'data_cadastro_previsto': data_cadastro_previsto_formatada,
                     'nome_equipamento': eq[4],
                     'nome_usina': eq[5]
                 }
@@ -358,10 +357,6 @@ async def fetch_data_from_mysql():
                 status = "Funcionando"
                 status_class = "status-ok"
             
-            # Formatar datas para exibição
-            data_cadastro_previsto_str = data_cadastro_previsto.strftime("%d/%m/%Y %H:%M:%S") if data_cadastro_previsto else None
-            data_cadastro_quebra_str = data_cadastro_quebra.strftime("%d/%m/%Y %H:%M:%S") if data_cadastro_quebra else None
-            
             # Obter alarmes e emoji para este equipamento
             info_alarmes = alarmes_por_equipamento.get(cod_equipamento, {"alarmes": [{"mensagem": "Sem alarmes"}], "emoji_alerta": "-"})
             alarmes = info_alarmes["alarmes"]
@@ -374,8 +369,8 @@ async def fetch_data_from_mysql():
                 'nome_usina': nome_usina,
                 'status': status,
                 'status_class': status_class,
-                'data_cadastro_previsto': data_cadastro_previsto_str,
-                'data_cadastro_quebra': data_cadastro_quebra_str,
+                'data_cadastro_previsto': data_cadastro_previsto,
+                'data_cadastro_quebra': data_cadastro_quebra,
                 'alarmes': alarmes,
                 'emoji_alerta': emoji_alerta
             })
@@ -471,6 +466,11 @@ def read_html_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         return file.read()
 
+# Rota para atualizar apenas o gauge
+@st.cache_data(ttl=5)  # Cache por 5 segundos
+def get_gauge_html(value, max_value):
+    return create_gauge_html(value, max_value)
+
 # Verificar se o arquivo HTML existe
 if not os.path.exists('index.html'):
     st.error("Arquivo index.html não encontrado. Por favor, crie o arquivo conforme as instruções.")
@@ -481,6 +481,53 @@ else:
     # Substituir os placeholders pelos dados reais
     html_content = html_content.replace('EQUIPMENT_DATA_PLACEHOLDER', json.dumps(equipment_data))
     html_content = html_content.replace('GAUGE_PLACEHOLDER', gauge_html)
+    
+    # Adicionar script para atualização automática suave
+    st.markdown("""
+    <script>
+        // Configurar atualização automática a cada 2 minutos
+        setTimeout(function() {
+            // Recarregar a página de forma silenciosa
+            const currentScrollPos = window.scrollY;
+            const modalOpen = document.getElementById('alarm-modal').style.display === 'flex';
+            const modalIndex = window.currentModalEquipmentIndex;
+            
+            // Armazenar estado na sessionStorage
+            if (modalOpen) {
+                sessionStorage.setItem('modalOpen', 'true');
+                sessionStorage.setItem('modalIndex', modalIndex);
+            } else {
+                sessionStorage.removeItem('modalOpen');
+                sessionStorage.removeItem('modalIndex');
+            }
+            sessionStorage.setItem('scrollPos', currentScrollPos);
+            
+            // Recarregar a página
+            window.location.reload();
+        }, 120000); // 2 minutos
+        
+        // Restaurar estado após carregamento
+        window.addEventListener('load', function() {
+            // Restaurar posição de rolagem
+            const savedScrollPos = sessionStorage.getItem('scrollPos');
+            if (savedScrollPos) {
+                window.scrollTo(0, parseInt(savedScrollPos));
+                sessionStorage.removeItem('scrollPos');
+            }
+            
+            // Restaurar modal se estava aberto
+            const modalOpen = sessionStorage.getItem('modalOpen');
+            if (modalOpen) {
+                const modalIndex = parseInt(sessionStorage.getItem('modalIndex'));
+                setTimeout(function() {
+                    showModal(modalIndex);
+                    sessionStorage.removeItem('modalOpen');
+                    sessionStorage.removeItem('modalIndex');
+                }, 500);
+            }
+        });
+    </script>
+    """, unsafe_allow_html=True)
     
     # Renderizar o HTML
     st.components.v1.html(html_content, height=1000, scrolling=True)

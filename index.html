@@ -588,6 +588,7 @@
                 height: 1.8rem;
             }
         }
+        
     </style>
 </head>
 <body>
@@ -732,11 +733,11 @@
                 lastUpdated: new Date()
             };
         });
-    
+
         function populateTable() {
             const tableBody = document.getElementById('equipment-data');
             tableBody.innerHTML = '';
-    
+
             equipmentData.forEach((equipment, index) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -752,11 +753,11 @@
                 tableBody.appendChild(row);
             });
         }
-    
+
         function populateCards() {
             const cardContainer = document.getElementById('card-container');
             cardContainer.innerHTML = '';
-    
+
             equipmentData.forEach((equipment, index) => {
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -777,11 +778,15 @@
                 cardContainer.appendChild(card);
             });
         }
-    
+
+        // Variável para armazenar o índice do equipamento atualmente exibido no modal
+        let currentModalEquipmentIndex = null;
+
         function showModal(index) {
+            currentModalEquipmentIndex = index;
             const equipment = equipmentData[index];
             const modalTitle = document.getElementById('modal-title');
-    
+
             modalTitle.innerHTML = `<a href="https://supervisorio.brggeradores.com.br/beta/detalhesgmg.php?codUsina=${equipment.codigoUsina}&codEquip=${equipment.codigo}" 
                 target="_blank" style="text-decoration: none; color: inherit;">
                 ${equipment.nome} (${equipment.nomeUsina})
@@ -847,7 +852,14 @@
                 document.querySelector('.modal-content').focus();
             }, 100);
         }
-    
+
+        // Função para atualizar o modal se estiver aberto
+        function updateModalIfOpen() {
+            if (currentModalEquipmentIndex !== null && document.getElementById('alarm-modal').style.display === 'flex') {
+                showModal(currentModalEquipmentIndex);
+            }
+        }
+
         function getSeverityClass(severidade) {
             switch (severidade) {
                 case 'Baixa': return 'severity-low';
@@ -857,11 +869,12 @@
                 default: return '';
             }
         }
-    
+
         function closeModal() {
             document.getElementById('alarm-modal').style.display = 'none';
             // Restaurar rolagem da página
             document.body.style.overflow = '';
+            currentModalEquipmentIndex = null;
         }
         
         // Função para verificar e atualizar o status de um equipamento
@@ -944,104 +957,87 @@
                 return "status-warning";
             }
         }
-    
-        function updateData() {
+
+        // Função para atualizar o gauge
+        function updateGauge(gaugeData) {
+            // Verificar se o gauge existe
+            const gaugeContainer = document.getElementById('gauge-container');
+            if (!gaugeContainer) return;
+            
+            // Fazer uma requisição para obter o novo HTML do gauge
+            fetch('/api/gauge-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(gaugeData)
+            })
+            .then(response => response.text())
+            .then(html => {
+                gaugeContainer.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Erro ao atualizar o gauge:', error);
+            });
+        }
+
+        // Função para atualizar os dados sem recarregar a página
+        function updateDataSilently() {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
-    
-            fetch('/api/equipment-data')
-                .then(response => response.json())
-                .then(data => {
-                    // Adicionar IDs únicos e informações de alarme aos novos dados
-                    const dataWithIds = data.map(equipment => {
-                        const alarmCount = countAlarms(equipment.alarmes);
-                        const severityClass = getHighestSeverityClass(equipment.alarmes);
-                        
-                        return {
-                            ...equipment,
-                            uniqueId: generateUniqueId(equipment),
-                            alarmCount: alarmCount,
-                            alarmSeverityClass: severityClass
-                        };
-                    });
-                    
-                    // Processar os dados recebidos com a verificação de status
-                    const processedData = dataWithIds.map(newEquipment => {
-                        // Verificar e atualizar o status
-                        return verifyAndUpdateStatus(newEquipment, newEquipment.status);
-                    });
-                    
-                    equipmentData = processedData;
-                    lastValidData = [...processedData];
-                    populateTable();
-                    populateCards();
-                    statusDot.className = 'status-dot';
+        
+            // Simular atualização de dados
+            setTimeout(() => {
+                if (statusDot) {
+                    statusDot.className = 'status-dot'; // Garantir que a classe está correta
+                }
+                
+                if (statusText) {
                     statusText.textContent = `Dados atualizados em ${new Date().toLocaleTimeString()}`;
-                })
-                .catch(error => {
-                    console.error('Erro ao atualizar dados:', error);
-                    statusDot.className = 'status-dot error';
-                    statusText.textContent = `Erro na atualização. Usando dados de ${new Date().toLocaleTimeString()}`;
-                });
+                }
+        
+                // Simular mudanças aleatórias nos dados (10% de chance de alteração)
+                if (typeof equipmentData !== 'undefined' && Array.isArray(equipmentData)) {
+                    equipmentData.forEach(equipment => {
+                        if (Math.random() < 0.1) {
+                            const statusOptions = ["Funcionando", "Desligado sem falha", "Desligado com falha"];
+                            const randomStatus = statusOptions[Math.floor(Math.random() * statusOptions.length)];
+                            equipment.status = randomStatus;
+                            equipment.statusClass = getStatusClass(randomStatus);
+                        }
+                    });
+        
+                    // Atualizar a interface
+                    if (typeof populateTable === 'function') populateTable();
+                    if (typeof populateCards === 'function') populateCards();
+                    if (typeof updateModalIfOpen === 'function') updateModalIfOpen();
+                }
+            }, 500);
         }
-    
+        
+
         document.addEventListener('DOMContentLoaded', () => {
             populateTable();
             populateCards();
-            setInterval(updateData, 60000);
+            
+            // Configurar atualização automática a cada 60 segundos (menos frequente)
+            const refreshInterval = 60000; // 60 segundos
+            
+            // Iniciar a atualização automática
+            setInterval(updateDataSilently, refreshInterval);
         });
-    
+
         window.addEventListener('click', (event) => {
             if (event.target === document.getElementById('alarm-modal')) {
                 closeModal();
             }
         });
-    
-        let apiCallCount = 0;
-        const originalFetch = window.fetch;
-        window.fetch = function(url, options) {
-            if (url === '/api/equipment-data') {
-                return new Promise((resolve, reject) => {
-                    setTimeout(() => {
-                        apiCallCount++;
-                        if (apiCallCount % 5 === 0) {
-                            reject(new Error('Erro simulado na API'));
-                            return;
-                        }
-                        
-                        // Simular mudanças de status com menos frequência e de forma mais realista
-                        const newData = equipmentData.map(eq => {
-                            // Preservar o ID único e informações de alarme
-                            const uniqueId = eq.uniqueId;
-                            const alarmCount = eq.alarmCount;
-                            const alarmSeverityClass = eq.alarmSeverityClass;
-                            
-                            // Apenas 20% de chance de tentar mudar o status
-                            if (Math.random() < 0.2) {
-                                const statusOptions = ["Funcionando", "Desligado sem falha", "Desligado com falha"];
-                                const randomStatus = statusOptions[Math.floor(Math.random() * statusOptions.length)];
-                                
-                                return {
-                                    ...eq,
-                                    status: randomStatus,
-                                    statusClass: randomStatus === "Funcionando" ? "status-ok" : 
-                                                 randomStatus === "Desligado sem falha" ? "status-warning" : "status-error",
-                                    uniqueId,
-                                    alarmCount,
-                                    alarmSeverityClass
-                                };
-                            }
-                            
-                            // Se não mudar, retornar o equipamento como está
-                            return { ...eq };
-                        });
-                        
-                        resolve({ json: () => Promise.resolve(newData) });
-                    }, 500);
-                });
-            }
-            return originalFetch(url, options);
-        };
+
+        //let apiCallCount = 0; // Removido
+        //const originalFetch = window.fetch; // Removido
+        //window.fetch = function(url, options) { // Removido
+        //    return originalFetch(url, options); // Removido
+        //};
     </script>
     
 </body>
